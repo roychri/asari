@@ -118,14 +118,19 @@ class Asari
   #
   def add_item(id, fields)
     return nil if self.class.mode == :sandbox
-    query = { "type" => "add", "id" => id.to_s, "version" => Time.now.to_i, "lang" => "en" }
     fields.each do |k,v|
       fields[k] = convert_date_or_time(fields[k])
       fields[k] = "" if v.nil?
     end
 
-    query["fields"] = fields
-    doc_request(query)
+    sdf_document = {
+      "type" => "add",
+      "id" => id.to_s,
+      "version" => Time.now.to_i,
+      "lang" => "en",
+      "fields" => fields
+    }
+    upload_document(sdf_document)
   end
 
   # Public: Update an item in the index based on its document ID.
@@ -163,16 +168,23 @@ class Asari
   def remove_item(id)
     return nil if self.class.mode == :sandbox
 
-    query = { "type" => "delete", "id" => id.to_s, "version" => Time.now.to_i }
-    doc_request query
+    sdf_document = { "type" => "delete", "id" => id.to_s, "version" => Time.now.to_i }
+    upload_document sdf_document
   end
+
+  def upload_document(document)
+    batch = [document]
+    upload_batch(batch)
+  end
+  # Keep old name for backward compatibility
+  alias :doc_request :upload_document
 
   # Internal: helper method: common logic for queries against the doc endpoint.
   #
-  def doc_request(query)
+  def upload_batch(batch)
     endpoint = "http://doc-#{search_domain}.#{aws_region}.cloudsearch.amazonaws.com/#{api_version}/documents/batch"
 
-    options = { :body => [query].to_json, :headers => { "Content-Type" => "application/json"} }
+    options = { :body => batch.to_json, :headers => { "Content-Type" => "application/json"} }
 
     begin
       response = HTTParty.post(endpoint, options)
