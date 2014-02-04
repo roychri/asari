@@ -113,7 +113,7 @@ class Asari
       def asari_data_item(obj)
         data = {}
         self.asari_fields.each do |field|
-          data[field] = obj.send(field) || ""
+          data[field] = Array(obj.send(field) || "").map(&:to_s)
         end
         data
       end
